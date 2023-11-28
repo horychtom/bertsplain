@@ -101,7 +101,8 @@ class BaseExplainer(ABC):
             att_dict = self.explain_sentence(text)
 
             for tok, score in att_dict.items():
-                tok = clean_token_text(tok)
+                # tok = clean_token_text(tok)
+                tok = tok.strip(" ")
                 # add to mapping
                 if tok in token2att.keys():
                     token2att[tok] += score

@@ -11,7 +11,8 @@ class IntegratedGradientsExplainer(BaseExplainer):
         self.approx_steps_n = approx_steps_n
         self.word_embeddings = next(self.model.children()).embeddings.word_embeddings.weight
         self.static_embeddings = deepcopy(self.word_embeddings.data)
-        self.baseline = torch.zeros(self.static_embeddings.shape)
+        self.static_embeddings.to_device(self.device)
+        self.baseline = torch.zeros(self.static_embeddings.shape,device=self.device)
 
     def explain_sentence(self, sent):
         input = self.encode_sentence(sent)

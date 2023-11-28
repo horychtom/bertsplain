@@ -7,6 +7,7 @@ import pickle
 from tqdm import tqdm
 from bertsplain.utils import clean_token_text
 import numpy as np
+import torch
 
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
@@ -42,7 +43,10 @@ class BaseExplainer(ABC):
         self.token2att = None
         self.counter = None
         self.last_explained_class = None
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.model.to(self.device)
         self.model.eval()
+
 
     def encode_sentence(self, sent):
         tokens = self.tokenizer(
@@ -51,6 +55,7 @@ class BaseExplainer(ABC):
             truncation=True,
             return_tensors="pt",
         )
+        tokens = {k: v.to(self.device) for k, v in tokens.items()}
         return tokens
 
     @abstractmethod

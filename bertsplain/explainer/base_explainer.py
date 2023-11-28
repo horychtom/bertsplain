@@ -47,7 +47,6 @@ class BaseExplainer(ABC):
         self.model.to(self.device)
         self.model.eval()
 
-
     def encode_sentence(self, sent):
         tokens = self.tokenizer(
             sent,
@@ -67,7 +66,7 @@ class BaseExplainer(ABC):
             sent (str): The sentence to be explained.
 
         Returns:
-            Dict[str, float]: A dictionary containing explanation scores for different tokens of the sentence.
+            Dict[str, float]: A dictionary containing topk attribution scores for tokens of the sentence.
         """
 
     def explain_dataset(self, class_=1, path: str = None):
@@ -146,7 +145,16 @@ class BaseExplainer(ABC):
         return " ".join(token_str_list)
 
     def get_wordcloud(self, silhouette_path=None):
-        """Generate wordcloud from the list of tokens."""
+        """
+        Generate a word cloud based on the text data and save it as an image.
+
+        Args:
+            silhouette_path (str, optional): Path to the silhouette image used as a mask for the word cloud. Defaults to None.
+
+        Returns:
+            None
+        """
+
         mask = np.array(Image.open(silhouette_path)) if silhouette_path else None
         color = "Greens" if self.last_explained_class == 0 else "Reds"
         wc = WordCloud(width=1600, height=800, background_color="white", mask=mask, colormap=color)

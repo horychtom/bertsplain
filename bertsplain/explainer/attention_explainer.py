@@ -8,12 +8,17 @@ class AttentionExplainer(BaseExplainer):
         super().__init__(model_checkpoint, dataset, top_k)
 
     def explain_sentence(self, sent) -> Dict[str, float]:
-        tokens = self.tokenizer(
-            sent,
-            padding=True,
-            truncation=True,
-            return_tensors="pt",
-        )
+        """
+        Explains the attention of a given sentence.
+
+        Args:
+            sent (str): The input sentence to be explained.
+
+        Returns:
+            Dict[str, float]: A dictionary containing the decoded tokens and their corresponding attention scores.
+        """
+
+        tokens = self.encode_sentence(sent)
 
         # model inference
         with torch.no_grad():
@@ -26,7 +31,7 @@ class AttentionExplainer(BaseExplainer):
         )  # get the top k tokens with the highest attention scores
         # get the decoded tokens and attention scores for the top k tokens in the sentence
         # (excluding special tokens)
-        output = {
+        return {
             self.tokenizer.decode(tokens["input_ids"][:, seq_pos_idx].item()): att_value
             for seq_pos_idx, att_value in zip(
                 attentions.indices[-1].tolist(),
@@ -34,4 +39,3 @@ class AttentionExplainer(BaseExplainer):
             )
             if tokens["input_ids"][:, seq_pos_idx].item() > 100
         }
-        return output

@@ -44,6 +44,15 @@ class BaseExplainer(ABC):
         self.last_explained_class = None
         self.model.eval()
 
+    def encode_sentence(self, sent):
+        tokens = self.tokenizer(
+            sent,
+            padding=True,
+            truncation=True,
+            return_tensors="pt",
+        )
+        return tokens
+
     @abstractmethod
     def explain_sentence(self, sent) -> Dict[str, float]:
         """

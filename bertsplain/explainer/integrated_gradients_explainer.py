@@ -12,12 +12,22 @@ class IntegratedGradientsExplainer(BaseExplainer):
         self.word_embeddings = next(self.model.children()).embeddings.word_embeddings.weight
         self.static_embeddings = deepcopy(self.word_embeddings.data)
         self.static_embeddings.to(self.device)
-        self.baseline = torch.zeros(self.static_embeddings.shape,device=self.device)
+        self.baseline = torch.zeros(self.static_embeddings.shape, device=self.device)
 
-    def explain_sentence(self, sent):
-        input = self.encode_sentence(sent)
+    def _path_integral_approximation(self, input):
+        """
+        Calculates the integrated gradients using the path integral approximation method.
+
+        Args:
+            input: The input to the model.
+
+        Returns:
+            integrated_grads: The integrated gradients calculated on a straight line
+            between baseline (zero embedding) and the input embedding.
+        """
 
         gradients = []
+        # calculate gradients for each step on a path between baseline and input
         for step in range(self.approx_steps_n + 1):
             alpha = step / self.approx_steps_n
             self.word_embeddings.data = self.baseline + alpha * (
@@ -31,13 +41,33 @@ class IntegratedGradientsExplainer(BaseExplainer):
             ]
             gradients.append(gradient)
 
-        label = output.logits.argmax(dim=1).tolist()  # actual prediction at the final step
         grads = torch.stack(gradients, dim=0)
         grads = (grads[:-1] + grads[1:]) / 2  # trapezoidal rule
-        avg_grads = grads.mean(dim=0)
-        integraded_grads = hidden_state * avg_grads
-        attributions = integraded_grads.abs().sum(dim=-1).squeeze(0)
-        topk_attributions = (attributions / torch.norm(attributions)).topk(
+        grads = grads.mean(dim=0)  # average over approx_steps_n
+
+        integrated_grads = hidden_state * grads
+        return integrated_grads
+
+    def explain_sentence(self, sent):
+        """
+        Explains the given sentence by computing the attributions of each token using integrated gradients.
+
+        Args:
+            sent (str): The input sentence to be explained.
+
+        Returns:
+            dict: A dictionary containing the token attributions of the top-k tokens in the sentence.
+                  The keys are the tokens and the values are the corresponding attributions.
+        """
+
+        input = self.encode_sentence(sent)
+        integrated_grads = self._path_integral_approximation(input)
+
+        attributions = (
+            integrated_grads.abs().sum(dim=-1).squeeze(0)
+        )  # abs and sum over embedding dimension
+        attributions = attributions / torch.norm(attributions)  # normalize
+        topk_attributions = attributions.topk(
             self.top_k if self.top_k < len(attributions) else len(attributions)
         )
         return {
@@ -46,5 +76,3 @@ class IntegratedGradientsExplainer(BaseExplainer):
                 topk_attributions.indices.tolist(), topk_attributions.values.tolist()
             )
         }
-
-    
